@@ -53,14 +53,14 @@ local utils = import 'mixin-utils/utils.libsonnet';
           if $._config.singleBinary
           then d.addMultiTemplate('job', 'cortex_build_info', 'job')
           else d
-               .addMultiTemplate('cluster', 'cortex_build_info', 'cluster')
-               .addMultiTemplate('namespace', 'cortex_build_info{cluster=~"$cluster"}', 'namespace')
+               .addMultiTemplate('cluster', 'cortex_build_info', $._config.clusterLabel) 
+               .addMultiTemplate('namespace', 'cortex_build_info{' + $._config.clusterLabel + '=~"$cluster"}', 'namespace')
         else
           if $._config.singleBinary
           then d.addTemplate('job', 'cortex_build_info', 'job')
           else d
-               .addTemplate('cluster', 'cortex_build_info', 'cluster')
-               .addTemplate('namespace', 'cortex_build_info{cluster=~"$cluster"}', 'namespace'),
+               .addTemplate('cluster', 'cortex_build_info', $._config.clusterLabel)
+               .addTemplate('namespace', 'cortex_build_info{' + $._config.clusterLabel + '=~"$cluster"}', 'namespace'),
     },
 
   // The mixin allow specialism of the job selector depending on if its a single binary
@@ -68,17 +68,17 @@ local utils = import 'mixin-utils/utils.libsonnet';
   jobMatcher(job)::
     if $._config.singleBinary
     then 'job=~"$job"'
-    else 'cluster=~"$cluster", job=~"($namespace)/%s"' % job,
+    else $._config.clusterLabel + '=~"$cluster", job=~"($namespace)/%s"' % job,
 
   namespaceMatcher()::
     if $._config.singleBinary
     then 'job=~"$job"'
-    else 'cluster=~"$cluster", namespace=~"$namespace"',
+    else $._config.clusterLabel + '=~"$cluster", namespace=~"$namespace"',
 
   jobSelector(job)::
     if $._config.singleBinary
-    then [utils.selector.noop('cluster'), utils.selector.re('job', '$job')]
-    else [utils.selector.re('cluster', '$cluster'), utils.selector.re('job', '($namespace)/%s' % job)],
+    then [utils.selector.noop($._config.clusterLabel), utils.selector.re('job', '$job')]
+    else [utils.selector.re($._config.clusterLabel, '$cluster'), utils.selector.re('job', '($namespace)/%s' % job)],
 
   queryPanel(queries, legends, legendLink=null)::
     super.queryPanel(queries, legends, legendLink) + {

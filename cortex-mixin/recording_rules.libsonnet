@@ -13,54 +13,54 @@ local utils = import 'mixin-utils/utils.libsonnet';
       {
         name: 'cortex_api_1',
         rules:
-          utils.histogramRules('cortex_request_duration_seconds', ['cluster', 'job']),
+          utils.histogramRules('cortex_request_duration_seconds', $._config.cluster_labels),
       },
       {
         name: 'cortex_api_2',
         rules:
-          utils.histogramRules('cortex_request_duration_seconds', ['cluster', 'job', 'route']),
+          utils.histogramRules('cortex_request_duration_seconds', $._config.job_labels),
       },
       {
         name: 'cortex_api_3',
         rules:
-          utils.histogramRules('cortex_request_duration_seconds', ['cluster', 'namespace', 'job', 'route']),
+          utils.histogramRules('cortex_request_duration_seconds', $._config.job_labels + ['route']),
       },
       {
         name: 'cortex_querier_api',
         rules:
-          utils.histogramRules('cortex_querier_request_duration_seconds', ['cluster', 'job']) +
-          utils.histogramRules('cortex_querier_request_duration_seconds', ['cluster', 'job', 'route']) +
-          utils.histogramRules('cortex_querier_request_duration_seconds', ['cluster', 'namespace', 'job', 'route']),
+          utils.histogramRules('cortex_querier_request_duration_seconds', $._config.job_labels) +
+          utils.histogramRules('cortex_querier_request_duration_seconds', $._config.job_labels + ['route']) +
+          utils.histogramRules('cortex_querier_request_duration_seconds', $._config.cluster_labels + ['route']),
       },
       {
         name: 'cortex_cache',
         rules:
-          utils.histogramRules('cortex_memcache_request_duration_seconds', ['cluster', 'job', 'method']) +
-          utils.histogramRules('cortex_cache_request_duration_seconds', ['cluster', 'job']) +
-          utils.histogramRules('cortex_cache_request_duration_seconds', ['cluster', 'job', 'method']),
+          utils.histogramRules('cortex_memcache_request_duration_seconds', $._config.job_labels + ['method']) +
+          utils.histogramRules('cortex_cache_request_duration_seconds', $._config.job_labels) +
+          utils.histogramRules('cortex_cache_request_duration_seconds', $._config.job_labels + ['method']),
       },
       {
         name: 'cortex_storage',
         rules:
-          utils.histogramRules('cortex_bigtable_request_duration_seconds', ['cluster', 'job', 'operation']) +
-          utils.histogramRules('cortex_cassandra_request_duration_seconds', ['cluster', 'job', 'operation']) +
-          utils.histogramRules('cortex_dynamo_request_duration_seconds', ['cluster', 'job', 'operation']) +
-          utils.histogramRules('cortex_chunk_store_index_lookups_per_query', ['cluster', 'job']) +
-          utils.histogramRules('cortex_chunk_store_series_pre_intersection_per_query', ['cluster', 'job']) +
-          utils.histogramRules('cortex_chunk_store_series_post_intersection_per_query', ['cluster', 'job']) +
-          utils.histogramRules('cortex_chunk_store_chunks_per_query', ['cluster', 'job']) +
-          utils.histogramRules('cortex_database_request_duration_seconds', ['cluster', 'job', 'method']) +
-          utils.histogramRules('cortex_gcs_request_duration_seconds', ['cluster', 'job', 'operation']) +
-          utils.histogramRules('cortex_kv_request_duration_seconds', ['cluster', 'job']),
+          utils.histogramRules('cortex_bigtable_request_duration_seconds', $._config.job_labels + ['operation']) +
+          utils.histogramRules('cortex_cassandra_request_duration_seconds', $._config.job_labels + ['operation']) +
+          utils.histogramRules('cortex_dynamo_request_duration_seconds', $._config.job_labels + ['operation']) +
+          utils.histogramRules('cortex_chunk_store_index_lookups_per_query', $._config.job_labels) +
+          utils.histogramRules('cortex_chunk_store_series_pre_intersection_per_query', $._config.job_labels) +
+          utils.histogramRules('cortex_chunk_store_series_post_intersection_per_query', $._config.job_labels) +
+          utils.histogramRules('cortex_chunk_store_chunks_per_query', $._config.job_labels) +
+          utils.histogramRules('cortex_database_request_duration_seconds', $._config.job_labels + ['method']) +
+          utils.histogramRules('cortex_gcs_request_duration_seconds', $._config.job_labels + ['operation']) +
+          utils.histogramRules('cortex_kv_request_duration_seconds', $._config.job_labels),
       },
       {
         name: 'cortex_queries',
         rules:
-          utils.histogramRules('cortex_query_frontend_retries', ['cluster', 'job']) +
-          utils.histogramRules('cortex_query_frontend_queue_duration_seconds', ['cluster', 'job']) +
-          utils.histogramRules('cortex_ingester_queried_series', ['cluster', 'job']) +
-          utils.histogramRules('cortex_ingester_queried_chunks', ['cluster', 'job']) +
-          utils.histogramRules('cortex_ingester_queried_samples', ['cluster', 'job']),
+          utils.histogramRules('cortex_query_frontend_retries', $._config.job_labels) +
+          utils.histogramRules('cortex_query_frontend_queue_duration_seconds', $._config.job_labels) +
+          utils.histogramRules('cortex_ingester_queried_series', $._config.job_labels) +
+          utils.histogramRules('cortex_ingester_queried_chunks', $._config.job_labels) +
+          utils.histogramRules('cortex_ingester_queried_samples', $._config.job_labels),
       },
       {
         name: 'cortex_received_samples',
@@ -81,7 +81,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             // Multi-zone deployments are grouped together removing the "zone-X" suffix.
             record: 'cluster_namespace_deployment:actual_replicas:count',
             expr: |||
-              sum by (cluster, namespace, deployment) (
+              sum by (%(clusterLabel)s, namespace, deployment) (
                 label_replace(
                   kube_deployment_spec_replicas,
                   # The question mark in "(.*?)" is used to make it non-greedy, otherwise it
@@ -90,10 +90,10 @@ local utils = import 'mixin-utils/utils.libsonnet';
                 )
               )
               or
-              sum by (cluster, namespace, deployment) (
+              sum by (%(clusterLabel)s, namespace, deployment) (
                 label_replace(kube_statefulset_replicas, "deployment", "$1", "statefulset", "(.*?)(?:-zone-[a-z])?")
               )
-            |||,
+            ||| % _config,
           },
           {
             // Distributors should be able to deal with 240k samples/s.
@@ -105,7 +105,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             expr: |||
               ceil(
                 quantile_over_time(0.99,
-                  sum by (cluster, namespace) (
+                  sum by (%(clusterLabel)s, namespace) (
                     %(group_prefix_jobs)s:cortex_distributor_received_samples:rate5m
                   )[24h:]
                 )
@@ -123,7 +123,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             },
             expr: |||
               ceil(
-                sum by (cluster, namespace) (%(cortex_overrides_metric)s{limit_name="ingestion_rate"})
+                sum by (%(clusterLabel)s, namespace) (%(cortex_overrides_metric)s{limit_name="ingestion_rate"})
                 * %(limit_utilisation_target)s / %(max_samples_per_sec_per_distributor)s
               )
             ||| % _config,
@@ -139,7 +139,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             expr: |||
               ceil(
                 quantile_over_time(0.99,
-                  sum by (cluster, namespace) (
+                  sum by (%(clusterLabel)s, namespace) (
                     %(group_prefix_jobs)s:cortex_distributor_received_samples:rate5m
                   )[24h:]
                 )
@@ -157,7 +157,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             expr: |||
               ceil(
                 quantile_over_time(0.99,
-                  sum by(cluster, namespace) (
+                  sum by(%(clusterLabel)s, namespace) (
                     cortex_ingester_memory_series
                   )[24h:]
                 )
@@ -175,7 +175,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             },
             expr: |||
               ceil(
-                sum by (cluster, namespace) (%(cortex_overrides_metric)s{limit_name="max_global_series_per_user"})
+                sum by (%(clusterLabel)s, namespace) (%(cortex_overrides_metric)s{limit_name="max_global_series_per_user"})
                 * 3 * %(limit_utilisation_target)s / %(max_series_per_ingester)s
               )
             ||| % _config,
@@ -190,7 +190,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             },
             expr: |||
               ceil(
-                sum by (cluster, namespace) (%(cortex_overrides_metric)s{limit_name="ingestion_rate"})
+                sum by (%(clusterLabel)s, namespace) (%(cortex_overrides_metric)s{limit_name="ingestion_rate"})
                 * %(limit_utilisation_target)s / %(max_samples_per_sec_per_ingester)s
               )
             ||| % _config,
@@ -204,22 +204,22 @@ local utils = import 'mixin-utils/utils.libsonnet';
             },
             expr: |||
               ceil(
-                (sum by (cluster, namespace) (
+                (sum by (%(clusterLabel)s, namespace) (
                   cortex_ingester_tsdb_storage_blocks_bytes{job=~".+/ingester.*"}
                 ) / 4)
                   /
-                avg by (cluster, namespace) (
+                avg by (%(clusterLabel)s, namespace) (
                   memcached_limit_bytes{job=~".+/memcached"}
                 )
               )
-            |||,
+            ||| % _config,
           },
           {
             // Convenience rule to get the CPU utilization for both a deployment and a statefulset.
             // Multi-zone deployments are grouped together removing the "zone-X" suffix.
             record: 'cluster_namespace_deployment:container_cpu_usage_seconds_total:sum_rate',
             expr: |||
-              sum by (cluster, namespace, deployment) (
+              sum by (%(clusterLabel)s, namespace, deployment) (
                 label_replace(
                   label_replace(
                     node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate,
@@ -230,7 +230,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                   "deployment", "$1", "deployment", "(.*?)(?:-zone-[a-z])?"
                 )
               )
-            |||,
+            ||| % _config,
           },
           {
             // Convenience rule to get the CPU request for both a deployment and a statefulset.
@@ -245,7 +245,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
               # This is the old expression, compatible with kube-state-metrics < v2.0.0,
               # where kube_pod_container_resource_requests_cpu_cores was removed:
               (
-                sum by (cluster, namespace, deployment) (
+                sum by (%(clusterLabel)s, namespace, deployment) (
                   label_replace(
                     label_replace(
                       kube_pod_container_resource_requests_cpu_cores,
@@ -261,7 +261,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
               # This expression is compatible with kube-state-metrics >= v1.4.0,
               # where kube_pod_container_resource_requests was introduced.
               (
-                sum by (cluster, namespace, deployment) (
+                sum by (%(clusterLabel)s, namespace, deployment) (
                   label_replace(
                     label_replace(
                       kube_pod_container_resource_requests{resource="cpu"},
@@ -273,7 +273,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                   )
                 )
               )
-            |||,
+            ||| % _config,
           },
           {
             // Jobs should be sized to their CPU usage.
@@ -298,7 +298,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
             // Multi-zone deployments are grouped together removing the "zone-X" suffix.
             record: 'cluster_namespace_deployment:container_memory_usage_bytes:sum',
             expr: |||
-              sum by (cluster, namespace, deployment) (
+              sum by (%(clusterLabel)s, namespace, deployment) (
                 label_replace(
                   label_replace(
                     container_memory_usage_bytes,
@@ -309,7 +309,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                   "deployment", "$1", "deployment", "(.*?)(?:-zone-[a-z])?"
                 )
               )
-            |||,
+            ||| % _config,
           },
           {
             // Convenience rule to get the Memory request for both a deployment and a statefulset.
@@ -324,7 +324,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
               # This is the old expression, compatible with kube-state-metrics < v2.0.0,
               # where kube_pod_container_resource_requests_memory_bytes was removed:
               (
-                sum by (cluster, namespace, deployment) (
+                sum by (%(clusterLabel)s, namespace, deployment) (
                   label_replace(
                     label_replace(
                       kube_pod_container_resource_requests_memory_bytes,
@@ -340,7 +340,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
               # This expression is compatible with kube-state-metrics >= v1.4.0,
               # where kube_pod_container_resource_requests was introduced.
               (
-                sum by (cluster, namespace, deployment) (
+                sum by (%(clusterLabel)s, namespace, deployment) (
                   label_replace(
                     label_replace(
                       kube_pod_container_resource_requests{resource="memory"},
@@ -352,7 +352,7 @@ local utils = import 'mixin-utils/utils.libsonnet';
                   )
                 )
               )
-            |||,
+            ||| % _config,
           },
           {
             // Jobs should be sized to their Memory usage.
@@ -381,62 +381,62 @@ local utils = import 'mixin-utils/utils.libsonnet';
           {
             record: 'cluster_job_%s:cortex_alertmanager_alerts:sum' % $._config.per_instance_label,
             expr: |||
-              sum by (cluster, job, %s) (cortex_alertmanager_alerts)
-            ||| % $._config.per_instance_label,
+              sum by (%(clusterLabel)s, job, %(per_instance_label)s) (cortex_alertmanager_alerts)
+            ||| % $._config,
           },
           {
             record: 'cluster_job_%s:cortex_alertmanager_silences:sum' % $._config.per_instance_label,
             expr: |||
-              sum by (cluster, job, %s) (cortex_alertmanager_silences)
-            ||| % $._config.per_instance_label,
+              sum by (%(clusterLabel)s, job, %(per_instance_label)s) (cortex_alertmanager_silences)
+            ||| % $._config
           },
           {
             record: 'cluster_job:cortex_alertmanager_alerts_received_total:rate5m',
             expr: |||
-              sum by (cluster, job) (rate(cortex_alertmanager_alerts_received_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job) (rate(cortex_alertmanager_alerts_received_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job:cortex_alertmanager_alerts_invalid_total:rate5m',
             expr: |||
-              sum by (cluster, job) (rate(cortex_alertmanager_alerts_invalid_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job) (rate(cortex_alertmanager_alerts_invalid_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job_integration:cortex_alertmanager_notifications_total:rate5m',
             expr: |||
-              sum by (cluster, job, integration) (rate(cortex_alertmanager_notifications_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job, integration) (rate(cortex_alertmanager_notifications_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job_integration:cortex_alertmanager_notifications_failed_total:rate5m',
             expr: |||
-              sum by (cluster, job, integration) (rate(cortex_alertmanager_notifications_failed_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job, integration) (rate(cortex_alertmanager_notifications_failed_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job:cortex_alertmanager_state_replication_total:rate5m',
             expr: |||
-              sum by (cluster, job) (rate(cortex_alertmanager_state_replication_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job) (rate(cortex_alertmanager_state_replication_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job:cortex_alertmanager_state_replication_failed_total:rate5m',
             expr: |||
-              sum by (cluster, job) (rate(cortex_alertmanager_state_replication_failed_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job) (rate(cortex_alertmanager_state_replication_failed_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job:cortex_alertmanager_partial_state_merges_total:rate5m',
             expr: |||
-              sum by (cluster, job) (rate(cortex_alertmanager_partial_state_merges_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job) (rate(cortex_alertmanager_partial_state_merges_total[5m]))
+            ||| % _config,
           },
           {
             record: 'cluster_job:cortex_alertmanager_partial_state_merges_failed_total:rate5m',
             expr: |||
-              sum by (cluster, job) (rate(cortex_alertmanager_partial_state_merges_failed_total[5m]))
-            |||,
+              sum by (%(clusterLabel)s, job) (rate(cortex_alertmanager_partial_state_merges_failed_total[5m]))
+            ||| % _config,
           },
         ],
       },
