@@ -48,8 +48,8 @@ local utils = import 'mixin-utils/utils.libsonnet';
         $.panel('Active Series') +
         $.statPanel(|||
           sum(cortex_ingester_memory_series{%(ingester)s}
-          / on(%(group_by_cluster)s) group_left
-          max by (%(group_by_cluster)s) (cortex_distributor_replication_factor{%(distributor)s}))
+          / on(%(group_by_namespace)s) group_left
+          max by (%(group_by_namespace)s) (cortex_distributor_replication_factor{%(distributor)s}))
         ||| % ($._config) {
           ingester: $.jobMatcher($._config.job_names.ingester),
           distributor: $.jobMatcher($._config.job_names.distributor),

@@ -40,12 +40,13 @@
       alertmanager: 'alertmanager',
     },
 
-    // Grouping labels, to uniquely identify and group by {jobs, clusters}
-    job_labels: ['cluster', 'namespace', 'job'],
-    cluster_labels: ['cluster', 'namespace'],
-
     // Custom Cluster label to use in dashboards.
     clusterLabel: 'cluster',
+
+    // Grouping labels, to uniquely identify and group by {jobs, clusters}
+    job_labels: [$._config.clusterLabel, 'namespace', 'job'],
+    namespace_labels: [$._config.clusterLabel, 'namespace'],
+    cluster_labels: [$._config.clusterLabel, 'job'],
 
     cortex_p99_latency_threshold_seconds: 2.5,
 
